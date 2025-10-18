@@ -46,6 +46,10 @@ inputs:
     description: "Gemini API key"
     required: false
 
+  google_api_key:
+    description: "Google API key"
+    required: false
+
   autodev_workflow_execution_token:
     description: "AutoDev workflow execution token"
     required: true
@@ -115,11 +119,12 @@ runs:
     - name: Run Gemini CLI
       if: inputs.agent == 'gemini_cli'
       uses: google-github-actions/run-gemini-cli@v1
+      env:
+        GITHUB_TOKEN: ${{ steps.prepare.outputs.github_token }}
       with:
         gemini_api_key: ${{ inputs.gemini_api_key }}
-        github_token: ${{ steps.prepare.outputs.github_token }}
-        branch_prefix: 'autodev/'
-        base_branch: ${{ inputs.base_branch }}
+        google_api_key: ${{ inputs.google_api_key }}
+        gemini_model: ${{ inputs.agent_model }}
         prompt: |
           ${{ inputs.prompt }}
 
