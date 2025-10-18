@@ -31,9 +31,14 @@ inputs:
     description: "Claude Code OAuth token (alternative to anthropic_api_key)"
     required: false
 
-  # For openai codex
+  # For openai codex and opencode
   openai_api_key:
     description: "OpenAI API key"
+    required: false
+
+  # For anthropic claude and opencode
+  anthropic_api_key:
+    description: "Anthropic API key"
     required: false
 
   autodev_workflow_execution_token:
@@ -102,7 +107,66 @@ runs:
             - Base branch: ${{ inputs.base_branch }}
             - Use `autodev/` prefix for new branch names.
 
-  
+    - name: Run OpenCode
+      if: inputs.agent == 'opencode'
+      shell: bash
+      env:
+        OPENAI_API_KEY: ${{ inputs.openai_api_key }}
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic_api_key }}
+        GITHUB_TOKEN: ${{ steps.prepare.outputs.github_token }}
+      run: |
+        # Install OpenCode CLI
+        npm install -g @opencode-ai/opencode
+
+        # Configure authentication for OpenAI if API key is provided
+        if [ -n "$OPENAI_API_KEY" ]; then
+          echo "Configuring OpenAI authentication..."
+          mkdir -p ~/.local/share/opencode
+          cat > ~/.local/share/opencode/auth.json << 'EOF'
+        {
+          "openai": {
+            "apiKey": "$OPENAI_API_KEY"
+          }
+        }
+        EOF
+        fi
+
+        # Configure authentication for Anthropic if API key is provided
+        if [ -n "$ANTHROPIC_API_KEY" ]; then
+          echo "Configuring Anthropic authentication..."
+          mkdir -p ~/.local/share/opencode
+          if [ -f ~/.local/share/opencode/auth.json ]; then
+            # Merge with existing auth.json
+            jq --arg key "$ANTHROPIC_API_KEY" '.anthropic = {"apiKey": $key}' ~/.local/share/opencode/auth.json > ~/.local/share/opencode/auth.json.tmp
+            mv ~/.local/share/opencode/auth.json.tmp ~/.local/share/opencode/auth.json
+          else
+            cat > ~/.local/share/opencode/auth.json << 'EOF'
+        {
+          "anthropic": {
+            "apiKey": "$ANTHROPIC_API_KEY"
+          }
+        }
+        EOF
+          fi
+        fi
+
+        # Prepare the prompt with context
+        PROMPT="${{ inputs.prompt }}
+
+        ---
+
+        Context:
+          - Repository: ${{ github.repository }}
+          - Base branch: ${{ inputs.base_branch }}
+          - Use \`autodev/\` prefix for new branch names."
+
+        # Run OpenCode with the prompt
+        if [ -n "${{ inputs.agent_model }}" ]; then
+          opencode run --model "${{ inputs.agent_model }}" "$PROMPT"
+        else
+          opencode run "$PROMPT"
+        fi
+
 
     # Run the postprocess
     - name: Postprocess
