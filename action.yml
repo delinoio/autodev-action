@@ -36,6 +36,11 @@ inputs:
     description: "OpenAI API key"
     required: false
 
+  # For GitHub Copilot CLI
+  github_copilot_token:
+    description: "GitHub token with Copilot access (alternative to using GITHUB_TOKEN)"
+    required: false
+
   autodev_workflow_execution_token:
     description: "AutoDev workflow execution token"
     required: true
@@ -102,7 +107,85 @@ runs:
             - Base branch: ${{ inputs.base_branch }}
             - Use `autodev/` prefix for new branch names.
 
-  
+    - name: Run GitHub Copilot CLI
+      if: inputs.agent == 'github_copilot_cli'
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_copilot_token || steps.prepare.outputs.github_token }}
+        PROMPT: ${{ inputs.prompt }}
+        BASE_BRANCH: ${{ inputs.base_branch }}
+        REPOSITORY: ${{ github.repository }}
+      run: |
+        set -e
+
+        echo "Installing GitHub Copilot CLI..."
+
+        # Install GitHub CLI if not present
+        if ! command -v gh &> /dev/null; then
+          echo "Installing GitHub CLI..."
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          sudo apt update
+          sudo apt install gh -y
+        fi
+
+        # Install GitHub Copilot CLI extension
+        echo "Installing GitHub Copilot CLI extension..."
+        npm install -g @github/copilot
+
+        # Authenticate with GitHub
+        echo "Authenticating with GitHub..."
+        echo "$GITHUB_TOKEN" | gh auth login --with-token
+
+        # Verify Copilot access
+        echo "Verifying GitHub Copilot access..."
+        if ! gh copilot --version &> /dev/null; then
+          echo "Error: GitHub Copilot CLI not available. Please ensure you have an active Copilot subscription."
+          exit 1
+        fi
+
+        # Create branch name
+        BRANCH_NAME="autodev/copilot-$(date +%s)"
+
+        # Create and checkout new branch from base branch
+        echo "Creating branch $BRANCH_NAME from $BASE_BRANCH..."
+        git fetch origin "$BASE_BRANCH"
+        git checkout -b "$BRANCH_NAME" "origin/$BASE_BRANCH"
+
+        # Execute Copilot CLI with the prompt
+        echo "Executing GitHub Copilot CLI..."
+        FULL_PROMPT="$PROMPT
+
+---
+
+Context:
+  - Repository: $REPOSITORY
+  - Base branch: $BASE_BRANCH
+  - Use \`autodev/\` prefix for new branch names."
+
+        # Use Copilot in non-interactive mode
+        echo "$FULL_PROMPT" | gh copilot suggest -t shell || echo "Copilot execution completed with status: $?"
+
+        # Check if there are changes
+        if [[ -n $(git status --porcelain) ]]; then
+          echo "Changes detected, committing..."
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "AutoDev: GitHub Copilot CLI changes
+
+Generated with GitHub Copilot CLI
+
+Prompt: $PROMPT"
+
+          # Push the branch
+          git push -u origin "$BRANCH_NAME"
+          echo "Pushed changes to branch: $BRANCH_NAME"
+        else
+          echo "No changes detected"
+        fi
+
+
 
     # Run the postprocess
     - name: Postprocess

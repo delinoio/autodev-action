@@ -14,7 +14,7 @@ inputs:
     description: 'The base branch to use for the action'
     required: true
   agent:
-    description: 'The agent to use for the action. Can be "claude_code", "gemini_cli", "codex_cli" or "opencode"'
+    description: 'The agent to use for the action. Can be "claude_code", "gemini_cli", "codex_cli", "opencode", or "github_copilot_cli"'
     required: true
   agent_model:
     description: 'The model to use for the agent'
