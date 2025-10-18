@@ -118,7 +118,7 @@ runs:
 
     - name: Run Gemini CLI
       if: inputs.agent == 'gemini_cli'
-      uses: google-github-actions/run-gemini-cli@v1
+      uses: google-github-actions/run-gemini-cli@main
       env:
         GITHUB_TOKEN: ${{ steps.prepare.outputs.github_token }}
       with:
