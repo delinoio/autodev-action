@@ -34,8 +34,8 @@ async function run(): Promise<void> {
 
         // Exchange OIDC token for GitHub App installation token
         const baseUrl =
-          process.env.AUTODEV_API_URL || "https://autodev.api.delino.io";
-        const endpoint = `${baseUrl}/delino.autodev.v1.AutoDev/ExchangeOIDCTokenForGitHubToken`;
+          process.env.AUTODEV_API_URL || "https://devbird.api.delino.io";
+        const endpoint = `${baseUrl}/delino.devbird.v1.DevBird/ExchangeOIDCTokenForGitHubToken`;
 
         const http = new HttpClient("autodev-action");
         const requestBody = JSON.stringify({
@@ -94,8 +94,8 @@ async function run(): Promise<void> {
 
       try {
         const baseUrl =
-          process.env.AUTODEV_API_URL || "https://autodev.api.delino.io";
-        const endpoint = `${baseUrl}/delino.autodev.v1.AutoDev/LinkGitHubActionByToken`;
+          process.env.AUTODEV_API_URL || "https://devbird.api.delino.io";
+        const endpoint = `${baseUrl}/delino.devbird.v1.DevBird/LinkGitHubActionByToken`;
 
         const http = new HttpClient("autodev-action");
         const requestBody = JSON.stringify({
